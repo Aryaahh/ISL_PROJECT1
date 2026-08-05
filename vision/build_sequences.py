@@ -1,114 +1,86 @@
 import os
 import numpy as np
 
-# ==========================================================
-# Configuration
-# ==========================================================
+# =====================================================
+# Paths
+# =====================================================
 
-# Get the project root directory
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 LANDMARK_FOLDER = os.path.join(BASE_DIR, "data", "processed_landmarks")
 OUTPUT_FOLDER = os.path.join(BASE_DIR, "data", "sequences")
 
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
+# =====================================================
+# Settings
+# =====================================================
+
 SEQUENCE_LENGTH = 30
 
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+X = []
+y = []
+
+labels = sorted([
+    d for d in os.listdir(LANDMARK_FOLDER)
+    if os.path.isdir(os.path.join(LANDMARK_FOLDER, d))
+])
+
+label_map = {label: i for i, label in enumerate(labels)}
 
 print("=" * 60)
 print("BUILDING SEQUENCES")
 print("=" * 60)
 
-total_sentences = 0
-total_videos = 0
-total_sequences = 0
+# =====================================================
+# Read every sentence
+# =====================================================
 
-# ==========================================================
-# Loop through all sentence folders
-# ==========================================================
+for label in labels:
 
-for sentence in sorted(os.listdir(LANDMARK_FOLDER)):
+    label_path = os.path.join(LANDMARK_FOLDER, label)
 
-    sentence_path = os.path.join(LANDMARK_FOLDER, sentence)
+    print(f"\nSentence : {label}")
 
-    if not os.path.isdir(sentence_path):
-        continue
+    samples = sorted(os.listdir(label_path))
 
-    total_sentences += 1
-    print(f"\nSentence : {sentence}")
+    for sample in samples:
 
-    output_sentence = os.path.join(OUTPUT_FOLDER, sentence)
-    os.makedirs(output_sentence, exist_ok=True)
+        sample_path = os.path.join(label_path, sample)
 
-    # ======================================================
-    # Loop through all video folders
-    # ======================================================
-
-    for video in sorted(os.listdir(sentence_path)):
-
-        video_path = os.path.join(sentence_path, video)
-
-        if not os.path.isdir(video_path):
+        if not os.path.isdir(sample_path):
             continue
 
-        total_videos += 1
-
-        output_video = os.path.join(output_sentence, video)
-        os.makedirs(output_video, exist_ok=True)
-
-        # Get all landmark files
-        landmark_files = sorted([
-            file for file in os.listdir(video_path)
-            if file.endswith(".npy")
+        files = sorted([
+            f for f in os.listdir(sample_path)
+            if f.endswith(".npy")
         ])
 
-        sequence_count = 0
+        if len(files) < SEQUENCE_LENGTH:
+            continue
 
-        # ==================================================
-        # Create sequences
-        # ==================================================
+        landmarks = []
 
-        for start in range(0, len(landmark_files), SEQUENCE_LENGTH):
+        for file in files[:SEQUENCE_LENGTH]:
+            data = np.load(os.path.join(sample_path, file))
+            landmarks.append(data)
 
-            current_files = landmark_files[start:start + SEQUENCE_LENGTH]
+        X.append(np.array(landmarks))
+        y.append(label_map[label])
 
-            # Ignore incomplete sequences
-            if len(current_files) < SEQUENCE_LENGTH:
-                continue
+print("\nSaving Dataset...")
 
-            sequence = []
+X = np.array(X)
+y = np.array(y)
 
-            for landmark_file in current_files:
+np.save(os.path.join(OUTPUT_FOLDER, "X.npy"), X)
+np.save(os.path.join(OUTPUT_FOLDER, "y.npy"), y)
+np.save(os.path.join(OUTPUT_FOLDER, "label_map.npy"), label_map)
 
-                landmark_path = os.path.join(
-                    video_path,
-                    landmark_file
-                )
-
-                features = np.load(landmark_path)
-
-                sequence.append(features)
-
-            sequence = np.array(sequence, dtype=np.float32)
-
-            save_name = f"sequence_{sequence_count:03d}.npy"
-
-            save_path = os.path.join(
-                output_video,
-                save_name
-            )
-
-            np.save(save_path, sequence)
-
-            sequence_count += 1
-            total_sequences += 1
-
-        print(f"   {video} --> {sequence_count} sequences")
-
-print("\n" + "=" * 60)
-print("SEQUENCE BUILDING COMPLETED")
 print("=" * 60)
-print(f"Sentences : {total_sentences}")
-print(f"Videos    : {total_videos}")
-print(f"Sequences : {total_sequences}")
+print("Sequence Building Completed")
+print("=" * 60)
+print("Total Sequences :", len(X))
+print("Shape of X      :", X.shape)
+print("Shape of y      :", y.shape)
 print("=" * 60)
