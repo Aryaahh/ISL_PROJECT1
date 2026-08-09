@@ -1,47 +1,71 @@
 import cv2
 import mediapipe as mp
-import numpy as np
 
 
 class LandmarkDetector:
 
+    # ============================================================
+    # INITIALIZATION
+    # ============================================================
+
     def __init__(self):
 
-        # MediaPipe Holistic
         self.mp_holistic = mp.solutions.holistic
+        self.mp_draw = mp.solutions.drawing_utils
 
         self.holistic = self.mp_holistic.Holistic(
             static_image_mode=False,
             model_complexity=1,
             smooth_landmarks=True,
+            enable_segmentation=False,
             refine_face_landmarks=True,
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
 
-        self.mp_draw = mp.solutions.drawing_utils
+        print("MediaPipe Holistic initialized.")
 
-    # ----------------------------------------
-    # Detect Landmarks
-    # ----------------------------------------
+    # ============================================================
+    # DETECT
+    # ============================================================
+
     def detect(self, frame):
 
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # IMPORTANT:
+        #
+        # Do NOT flip the frame here.
+        #
+        # Training data was extracted from the original
+        # frames without cv2.flip().
+        #
+
+        rgb = cv2.cvtColor(
+            frame,
+            cv2.COLOR_BGR2RGB
+        )
 
         rgb.flags.writeable = False
 
-        results = self.holistic.process(rgb)
+        results = self.holistic.process(
+            rgb
+        )
 
         rgb.flags.writeable = True
 
         return results
 
-    # ----------------------------------------
-    # Draw Landmarks
-    # ----------------------------------------
-    def draw_landmarks(self, frame, results):
+    # ============================================================
+    # DRAW
+    # ============================================================
+
+    def draw_landmarks(
+        self,
+        frame,
+        results
+    ):
 
         # Face
+
         if results.face_landmarks:
 
             self.mp_draw.draw_landmarks(
@@ -51,6 +75,7 @@ class LandmarkDetector:
             )
 
         # Pose
+
         if results.pose_landmarks:
 
             self.mp_draw.draw_landmarks(
@@ -59,7 +84,8 @@ class LandmarkDetector:
                 self.mp_holistic.POSE_CONNECTIONS
             )
 
-        # Left Hand
+        # Left hand
+
         if results.left_hand_landmarks:
 
             self.mp_draw.draw_landmarks(
@@ -68,7 +94,8 @@ class LandmarkDetector:
                 self.mp_holistic.HAND_CONNECTIONS
             )
 
-        # Right Hand
+        # Right hand
+
         if results.right_hand_landmarks:
 
             self.mp_draw.draw_landmarks(
@@ -79,102 +106,58 @@ class LandmarkDetector:
 
         return frame
 
-    # ----------------------------------------
-    # Extract Numerical Features
-    # ----------------------------------------
-    def extract_landmarks(self, results):
+    # ============================================================
+    # LANDMARK SUMMARY
+    # ============================================================
 
-        landmarks = []
+    def print_summary(
+        self,
+        results
+    ):
 
-        # ==============================
-        # Face (468 × 3 = 1404)
-        # ==============================
+        face = (
+            len(results.face_landmarks.landmark)
+            if results.face_landmarks
+            else 0
+        )
 
-        if results.face_landmarks:
+        pose = (
+            len(results.pose_landmarks.landmark)
+            if results.pose_landmarks
+            else 0
+        )
 
-            for lm in results.face_landmarks.landmark:
-                landmarks.extend([lm.x, lm.y, lm.z])
+        left = (
+            len(results.left_hand_landmarks.landmark)
+            if results.left_hand_landmarks
+            else 0
+        )
 
-        else:
-            landmarks.extend([0] * (468 * 3))
-
-        # ==============================
-        # Pose (33 × 4 = 132)
-        # x, y, z, visibility
-        # ==============================
-
-        if results.pose_landmarks:
-
-            for lm in results.pose_landmarks.landmark:
-                landmarks.extend(
-                    [lm.x, lm.y, lm.z, lm.visibility]
-                )
-
-        else:
-            landmarks.extend([0] * (33 * 4))
-
-        # ==============================
-        # Left Hand (21 × 3 = 63)
-        # ==============================
-
-        if results.left_hand_landmarks:
-
-            for lm in results.left_hand_landmarks.landmark:
-                landmarks.extend([lm.x, lm.y, lm.z])
-
-        else:
-            landmarks.extend([0] * (21 * 3))
-
-        # ==============================
-        # Right Hand (21 × 3 = 63)
-        # ==============================
-
-        if results.right_hand_landmarks:
-
-            for lm in results.right_hand_landmarks.landmark:
-                landmarks.extend([lm.x, lm.y, lm.z])
-
-        else:
-            landmarks.extend([0] * (21 * 3))
-
-        return np.array(landmarks, dtype=np.float32)
-
-    # ----------------------------------------
-    # Print Landmark Information
-    # ----------------------------------------
-    def print_summary(self, results):
-
-        face = len(results.face_landmarks.landmark) if results.face_landmarks else 0
-        pose = len(results.pose_landmarks.landmark) if results.pose_landmarks else 0
-        left = len(results.left_hand_landmarks.landmark) if results.left_hand_landmarks else 0
-        right = len(results.right_hand_landmarks.landmark) if results.right_hand_landmarks else 0
-
-        total = (
-            face * 3 +
-            pose * 4 +
-            left * 3 +
-            right * 3
+        right = (
+            len(results.right_hand_landmarks.landmark)
+            if results.right_hand_landmarks
+            else 0
         )
 
         print(
-            f"Face:{face} | "
-            f"Pose:{pose} | "
-            f"Left:{left} | "
-            f"Right:{right} | "
-            f"Features:{total}"
+            f"Face: {face} | "
+            f"Pose: {pose} | "
+            f"Left: {left} | "
+            f"Right: {right}"
         )
 
-    # ----------------------------------------
-    # Release Resources
-    # ----------------------------------------
+    # ============================================================
+    # CLOSE
+    # ============================================================
+
     def close(self):
 
         self.holistic.close()
 
 
-# ==========================================
-# Testing
-# ==========================================
+# ============================================================
+# TEST CAMERA
+# ============================================================
 
 if __name__ == "__main__":
 
@@ -182,7 +165,15 @@ if __name__ == "__main__":
 
     cap = cv2.VideoCapture(0)
 
-    print("Press 'Q' to Quit")
+    if not cap.isOpened():
+
+        raise RuntimeError(
+            "Could not open camera."
+        )
+
+    print()
+    print("Camera test started.")
+    print("Press Q to quit.")
 
     while True:
 
@@ -191,20 +182,42 @@ if __name__ == "__main__":
         if not ret:
             break
 
-        frame = cv2.flip(frame, 1)
+        # --------------------------------------------------------
+        # IMPORTANT:
+        #
+        # Process ORIGINAL frame.
+        # --------------------------------------------------------
 
-        results = detector.detect(frame)
+        results = detector.detect(
+            frame
+        )
 
-        detector.draw_landmarks(frame, results)
+        detector.draw_landmarks(
+            frame,
+            results
+        )
 
-        detector.print_summary(results)
+        # --------------------------------------------------------
+        # Mirror ONLY the DISPLAY.
+        #
+        # This does not affect landmark extraction.
+        # --------------------------------------------------------
 
-        cv2.imshow("Landmark Detection", frame)
+        display_frame = cv2.flip(
+            frame,
+            1
+        )
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        cv2.imshow(
+            "Landmark Detection",
+            display_frame
+        )
+
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     detector.close()
+
     cap.release()
+
     cv2.destroyAllWindows()
-    

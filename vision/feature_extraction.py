@@ -3,69 +3,157 @@ import numpy as np
 
 class FeatureExtractor:
 
-    def __init__(self):
-        pass
+    # ============================================================
+    # FEATURE CONFIGURATION
+    # ============================================================
 
-    # ----------------------------------------------------
-    # Left / Right Hand (21 landmarks × 3 = 63)
-    # ----------------------------------------------------
+    LEFT_HAND_SIZE = 21 * 3       # 63
+    RIGHT_HAND_SIZE = 21 * 3      # 63
+    POSE_SIZE = 33 * 3            # 99
+    FACE_SIZE = 478 * 3            # 1434
+
+    FEATURE_SIZE = (
+        LEFT_HAND_SIZE
+        + RIGHT_HAND_SIZE
+        + POSE_SIZE
+        + FACE_SIZE
+    )
+
+    def __init__(self):
+
+        self.feature_size = self.FEATURE_SIZE
+
+        print(
+            f"FeatureExtractor initialized: "
+            f"{self.feature_size} features"
+        )
+
+    # ============================================================
+    # HAND LANDMARKS
+    # ============================================================
+
     def extract_hand_landmarks(self, hand_landmarks):
 
-        if hand_landmarks:
-            landmarks = []
+        if hand_landmarks is None:
 
-            for landmark in hand_landmarks.landmark:
-                landmarks.extend([
-                    landmark.x,
-                    landmark.y,
-                    landmark.z
-                ])
+            return np.zeros(
+                self.LEFT_HAND_SIZE,
+                dtype=np.float32
+            )
 
-            return np.array(landmarks, dtype=np.float32)
+        landmarks = []
 
-        return np.zeros(63, dtype=np.float32)
+        for landmark in hand_landmarks.landmark:
 
-    # ----------------------------------------------------
-    # Pose (33 landmarks × 3 = 99)
-    # ----------------------------------------------------
+            landmarks.extend([
+                landmark.x,
+                landmark.y,
+                landmark.z
+            ])
+
+        result = np.asarray(
+            landmarks,
+            dtype=np.float32
+        )
+
+        if result.shape != (63,):
+
+            raise ValueError(
+                f"Hand feature shape error: "
+                f"{result.shape}, expected (63,)"
+            )
+
+        return result
+
+    # ============================================================
+    # POSE LANDMARKS
+    # ============================================================
+
     def extract_pose_landmarks(self, pose_landmarks):
 
-        if pose_landmarks:
-            landmarks = []
+        if pose_landmarks is None:
 
-            for landmark in pose_landmarks.landmark:
-                landmarks.extend([
-                    landmark.x,
-                    landmark.y,
-                    landmark.z
-                ])
+            return np.zeros(
+                self.POSE_SIZE,
+                dtype=np.float32
+            )
 
-            return np.array(landmarks, dtype=np.float32)
+        landmarks = []
 
-        return np.zeros(99, dtype=np.float32)
+        for landmark in pose_landmarks.landmark:
 
-    # ----------------------------------------------------
-    # Face (468 landmarks × 3 = 1404)
-    # ----------------------------------------------------
+            landmarks.extend([
+                landmark.x,
+                landmark.y,
+                landmark.z
+            ])
+
+        result = np.asarray(
+            landmarks,
+            dtype=np.float32
+        )
+
+        if result.shape != (99,):
+
+            raise ValueError(
+                f"Pose feature shape error: "
+                f"{result.shape}, expected (99,)"
+            )
+
+        return result
+
+    # ============================================================
+    # FACE LANDMARKS
+    # ============================================================
+
     def extract_face_landmarks(self, face_landmarks):
 
-        if face_landmarks:
-            landmarks = []
+        if face_landmarks is None:
 
-            for landmark in face_landmarks.landmark:
-                landmarks.extend([
-                    landmark.x,
-                    landmark.y,
-                    landmark.z
-                ])
+            return np.zeros(
+                self.FACE_SIZE,
+                dtype=np.float32
+            )
 
-            return np.array(landmarks, dtype=np.float32)
+        landmarks = []
 
-        return np.zeros(1404, dtype=np.float32)
+        for landmark in face_landmarks.landmark:
 
-    # ----------------------------------------------------
-    # Combine All Features
-    # ----------------------------------------------------
+            landmarks.extend([
+                landmark.x,
+                landmark.y,
+                landmark.z
+            ])
+
+        result = np.asarray(
+            landmarks,
+            dtype=np.float32
+        )
+
+        if result.shape != (1434,):
+
+            raise ValueError(
+                f"Face feature shape error: "
+                f"{result.shape}, expected (1434,)"
+            )
+
+        return result
+
+    # ============================================================
+    # ALL FEATURES
+    #
+    # IMPORTANT:
+    #
+    # The order MUST remain:
+    #
+    # LEFT HAND
+    # RIGHT HAND
+    # POSE
+    # FACE
+    #
+    # This is the order used to create your training data.
+    # ============================================================
+
     def extract_all_features(self, results):
 
         left_hand = self.extract_hand_landmarks(
@@ -89,29 +177,43 @@ class FeatureExtractor:
             right_hand,
             pose,
             face
-        ])
+        ]).astype(np.float32)
+
+        if features.shape != (1659,):
+
+            raise ValueError(
+                "\nInvalid feature vector!\n"
+                f"Actual:   {features.shape}\n"
+                f"Expected: (1659,)"
+            )
 
         return features
 
 
-# ----------------------------------------------------
-# Test
-# ----------------------------------------------------
+# ============================================================
+# TEST
+# ============================================================
+
 if __name__ == "__main__":
 
-    print("=" * 40)
-    print("Feature Extraction Module Ready")
-    print("=" * 40)
+    print("=" * 60)
+    print("FEATURE EXTRACTION TEST")
+    print("=" * 60)
 
-    print("Expected Feature Dimensions")
-    print("-" * 40)
+    print()
+    print("Left Hand :", FeatureExtractor.LEFT_HAND_SIZE)
+    print("Right Hand:", FeatureExtractor.RIGHT_HAND_SIZE)
+    print("Pose      :", FeatureExtractor.POSE_SIZE)
+    print("Face      :", FeatureExtractor.FACE_SIZE)
+    print()
+    print(
+        "Total     :",
+        FeatureExtractor.FEATURE_SIZE
+    )
 
-    print("Left Hand  : 63")
-    print("Right Hand : 63")
-    print("Pose       : 99")
-    print("Face       : 1404")
+    assert FeatureExtractor.FEATURE_SIZE == 1659
 
-    print("-" * 40)
-    print("Total      : 1629")
-    print("=" * 40)
+    print()
+    print("Feature size check: PASS")
+    print("=" * 60)
     

@@ -1,0 +1,26 @@
+ISL BiLSTM Model Information
+============================
+Samples: 160
+Classes: 17
+Sequence length: 30
+Feature size: 1659
+Validation accuracy: 0.3438
+
+Classes:
+0: Angry
+1: Bad
+2: I
+3: Need
+4: Sad
+5: Sorry
+6: You
+7: come
+8: drink
+9: eat
+10: food
+11: go
+12: happy
+13: he
+14: she
+15: sleep
+16: water

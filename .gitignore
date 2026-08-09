@@ -1,6 +1,35 @@
-.venv/
+# Python
 __pycache__/
-*.pyc
-*.pkl
-.env
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+.venv312/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Project data - DO NOT UPLOAD
 data/
+
+# Generated files
+*.log
+*.tmp
+
+# Models
+*.h5
+*.keras
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
